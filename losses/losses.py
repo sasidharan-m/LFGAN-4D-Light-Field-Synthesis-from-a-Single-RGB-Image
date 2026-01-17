@@ -10,7 +10,7 @@ from torch.autograd import Variable
 from torch.autograd import grad as torch_grad
 
 
-def GeneratorWGANLoss(d_generated):
+def generatorWGANLoss(d_generated):
     """
     Function that defines the adversarial loss based on the WGAN-GP paper
     
@@ -25,7 +25,7 @@ def GeneratorWGANLoss(d_generated):
     return -d_generated.mean()
 
 
-def GradientPenalty(D, real_data, generated_data, use_cuda=False):
+def gradientPenalty(D, real_data, generated_data, use_cuda=False):
     """
     Function that defines the Gradient Penalty for the Generator network
     (Based on the WGAN-GP paper)
@@ -73,7 +73,7 @@ def GradientPenalty(D, real_data, generated_data, use_cuda=False):
     # Return gradient penalty
     return ((gradients_norm - 1) ** 2).mean()
 
-def GeneratorMSELoss(real_data, generated_data):
+def generatorMSELoss(real_data, generated_data):
     """
     Function that defines the MSE Loss for the Generator network
 

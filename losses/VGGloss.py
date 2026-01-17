@@ -56,7 +56,7 @@ class VGGFeatureExtractor(nn.Module):
         return feats
     
 
-def NormalizeVGG(x):
+def normalizeVGG(x):
     """
     Function to normalize the VGG feature values
 
@@ -111,8 +111,8 @@ class VGGPerceptualLoss(nn.Module):
         generated_lf_flat = generated_lf.permute(0, 3, 4, 1, 2, 5).reshape(B*V*U, 3, H, W)
         real_lf_flat = real_lf.permute(0, 3, 4, 1, 2, 5).reshape(B*V*U, 3, H, W)
 
-        generated = NormalizeVGG(generated_lf_flat)
-        real = NormalizeVGG(real_lf_flat)
+        generated = normalizeVGG(generated_lf_flat)
+        real = normalizeVGG(real_lf_flat)
 
         generated_feats = self.vgg(generated)
         real_feats = self.vgg(real)
