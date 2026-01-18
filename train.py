@@ -15,7 +15,7 @@ from losses.VGGloss import VGGPerceptualLoss, VGGFeatureExtractor
 from losses.EPIloss import EPILoss
 from losses.BRIloss import BRIloss
 
-def generatorLoss(generated_lf, real_lf, D, vgg, vgg_loss_fn, epoch, device, lambda_adv=1e-3, lambda_mse=1.0, lambda_vgg=2e-6, lambda_epi=2e-6, lambda_bri=1.0):
+def generatorLoss(generated_lf, real_lf, D, vgg, vgg_loss_fn, epoch, epochs, device, lambda_adv=1e-3, lambda_mse=1.0, lambda_vgg=2e-6, lambda_epi=2e-6, lambda_bri=1.0):
     """
     Function that calculates the generator loss for LFGAN
     
@@ -27,6 +27,7 @@ def generatorLoss(generated_lf, real_lf, D, vgg, vgg_loss_fn, epoch, device, lam
     vgg - VGG model
     vgg_loss_fn - VGG loss function
     epoch - Epoch number
+    epochs - Total number of epochs
     device - Device to run the computations on
     lambda_adv - weight for the Adversarial Loss
     lambda_mse - weight for the MSE loss
@@ -42,7 +43,7 @@ def generatorLoss(generated_lf, real_lf, D, vgg, vgg_loss_fn, epoch, device, lam
     # WGAN-GP adversarial loss
     d_generated = D(generated_lf)
     adv_loss = torch.tensor([0.0], requires_grad=True, device=device)
-    if(epoch > 200):
+    if(epoch > (0.2 * epochs)):
         adv_loss = generatorWGANLoss(d_generated)
 
     # MSE loss
@@ -50,17 +51,17 @@ def generatorLoss(generated_lf, real_lf, D, vgg, vgg_loss_fn, epoch, device, lam
 
     # VGG loss
     vgg_loss = torch.tensor([0.0], requires_grad=True, device=device)
-    if(epoch > 200):
+    if(epoch > (0.2 * epochs)):
         vgg_loss = vgg_loss_fn(generated_lf.cpu(), real_lf.cpu())
 
     # EPI loss
     epi_loss = torch.tensor([0.0], requires_grad=True, device=device)
-    if(epoch > 500):
+    if(epoch > (0.5 * epochs)):
         epi_loss = EPILoss(vgg, generated_lf, real_lf)
 
     # BRI loss
     bri_loss = torch.tensor([0.0], requires_grad=True, device=device)
-    if(epoch > 700):
+    if(epoch > (0.7 * epochs)):
         bri_loss = BRIloss(generated_lf, real_lf)
 
     # Total generator loss
@@ -77,7 +78,7 @@ def generatorLoss(generated_lf, real_lf, D, vgg, vgg_loss_fn, epoch, device, lam
 
 
 
-def trainStepLFGAN(G, D, vgg, vgg_loss_fn, real_lf, input_img, g_optimizer, d_optimizer, epoch, device="cuda",
+def trainStepLFGAN(G, D, vgg, vgg_loss_fn, real_lf, input_img, g_optimizer, d_optimizer, epoch, epochs, device="cuda",
                    lambda_adv=1e-3, lambda_mse=1.0, lambda_vgg=2e-6, lambda_epi=2e-6, lambda_bri=1.0, lambda_gp=10.0, critic_iters=5):
     """
     Function that does one full LFGAN training step: discriminator + generator
@@ -93,6 +94,7 @@ def trainStepLFGAN(G, D, vgg, vgg_loss_fn, real_lf, input_img, g_optimizer, d_op
     g_optimizer - Optimizer for the Generator network
     d_optimizer - Optimizer for the Discriminator network
     epoch - Current epoch number
+    epochs - Total number of epochs
     device - Device to run the computations on
     lambda_adv - weight for the Adversarial Loss
     lambda_mse - weight for the MSE loss
@@ -132,7 +134,7 @@ def trainStepLFGAN(G, D, vgg, vgg_loss_fn, real_lf, input_img, g_optimizer, d_op
     # 2. Train Generator
     # -----------------------------
     fake_lf = G(input_img)
-    g_total_loss, loss_dict = generatorLoss(fake_lf, real_lf, D, vgg, vgg_loss_fn, epoch, device,
+    g_total_loss, loss_dict = generatorLoss(fake_lf, real_lf, D, vgg, vgg_loss_fn, epoch, epochs, device,
                                             lambda_adv=lambda_adv, lambda_mse=lambda_mse, lambda_vgg=lambda_vgg, lambda_epi=lambda_epi, lambda_bri=lambda_bri)
 
     g_optimizer.zero_grad()
@@ -208,7 +210,7 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(
                 vgg_loss_fn,
                 lf_batch, aif_batch,
                 g_optimizer, d_optimizer,
-                epoch,
+                epoch, epochs,
                 device=device,
                 lambda_adv=lambda_adv,
                 lambda_mse=lambda_mse,
@@ -275,7 +277,7 @@ def main():
     print("Starting training...")
     training_data_path = "/home/sasidharan/Projects/Plenoptic Camera/Datasets/Flower Dataset/Sub-Aperture Images/Train"
     weights_save_path = "/home/sasidharan/Projects/Plenoptic Camera/Code/LFGAN-4D-Light-Field-Synthesis-from-a-Single-RGB-Image/weights"
-    trainLFGAN(training_data_path, weights_save_path, batch_size=1)
+    trainLFGAN(training_data_path, weights_save_path, batch_size=1, epochs=10)
     print('Training Done.')
 
 # Run the driver function
