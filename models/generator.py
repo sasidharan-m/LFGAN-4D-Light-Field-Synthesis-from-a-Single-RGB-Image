@@ -29,7 +29,7 @@ class ConvBlock(nn.Module):
         --------
         Nothing
         """ 
-       super().__init()
+       super().__init__()
        self.block = nn.Sequential(
             nn.Conv2d(in_c, out_c, k, s, p),
             nn.ReLU(),
@@ -152,6 +152,9 @@ class Generator(nn.Module):
         self.U = ang_res
         self.V = ang_res
 
+        # Initaial conv block
+        self.init_conv = ConvBlock(3, 64)
+
         # Residual Blocks
         self.res_blocks = nn.Sequential(*[ResBlock(64) for _ in range(16)])
 
@@ -188,20 +191,22 @@ class Generator(nn.Module):
         --------
         Returns the output tensor of shape [B, H, W, V, U, 3]
         """
-        B, C, H, W = x.shape
+        B, H, W, C = x.shape
 
-        h = self.res_blocks(x)          # [B,H,W,64]
-        h = self.conv_block1(h)         # [B,H,W,256]
-        h = self.upsample_block1(h)     # [B,2*H,2*W,64]
-        h = self.conv_block2(h)         # [B,2*H,2*W,256]
-        h = self.upsample_block2(h)     # [B,4*H,4*W,64]
-        h = self.conv_block3(h)         # [B,4*H,4*W,256]
-        h = self.upsample_block3(h)     # [B,8*H,8*W,64]
-        h = self.conv_block4(h)         # [B,8*H,8*W,64] -> [B,U*H,V*W,3]
+        x = x.permute(0,3,1,2)
+        h = self.init_conv(x)
+        h = self.res_blocks(h)          # [B,64,H,W]
+        h = self.conv_block1(h)         # [B,256,H,W]
+        h = self.upsample_block1(h)     # [B,64,2*H,2*W]
+        h = self.conv_block2(h)         # [B,256,2*H,2*W]
+        h = self.upsample_block2(h)     # [B,64,4*H,4*W]
+        h = self.conv_block3(h)         # [B,256,4*H,4*W]
+        h = self.upsample_block3(h)     # [B,64,8*H,8*W]
+        h = self.conv_block4(h)         # [B,64,8*H,8*W] -> [B,3,U*H,V*W]
 
         assert C == 3
 
-        h = h.contiguous().view(B, H, self.U, W, self.V, 3)
-        disp = h.permute(0, 1, 3, 4, 2, 5)
+        h = h.contiguous().view(B, 3, H, self.U, W, self.V)
+        disp = h.permute(0, 2, 4, 5, 3, 1)
 
         return disp

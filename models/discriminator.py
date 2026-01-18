@@ -52,27 +52,28 @@ class Discriminator(nn.Module):
 
             nn.Conv2d(2048, 1024, 3, 1, 1),
             nn.BatchNorm2d(1024),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(1024, 512, 3, 1, 1),
+            nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True)
         )
 
-        self.conv1 = nn.Conv2d(1024, 512, 3, padding=1)
-        self.bn1 = nn.BatchNorm2d(512)
+        self.conv1 = nn.Conv2d(512, 128, 3, padding=1)
+        self.bn1 = nn.BatchNorm2d(128)
         self.lky1 = nn.LeakyReLU(0.2, inplace=True)
-        self.conv2 = nn.Conv2d(512, 128, 3, padding=1)
+        self.conv2 = nn.Conv2d(128, 128, 3, padding=1)
         self.bn2 = nn.BatchNorm2d(128)
         self.lky2 = nn.LeakyReLU(0.2, inplace=True)
-        self.conv3 = nn.Conv2d(128, 128, 3, padding=1)
-        self.bn3 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 512, 3, padding=1)
+        self.bn3 = nn.BatchNorm2d(512)
         self.lky3 = nn.LeakyReLU(0.2, inplace=True)
-        self.conv4 = nn.Conv2d(128, 512, 3, padding=1)
-        self.bn4 = nn.BatchNorm2d(512)
-        self.lky4 = nn.LeakyReLU(0.2, inplace=True)
 
-        self.conv5 = nn.Conv2d(512, 512, 3, padding=1)
+        self.conv4 = nn.Conv2d(512, 512, 3, padding=1)
 
-        output_size = 512 * (img_size[0] / 5) * (img_size[1] / 5)
+        output_size = int(512 * (ang_res * img_size[0] / 32) * (ang_res * img_size[1] / 32))
         self.features_to_prob = nn.Sequential(
-            nn.Linear(output_size, output_size),
+            # nn.Linear(output_size, output_size),
             nn.Linear(output_size, 1)
         )
 
@@ -82,7 +83,7 @@ class Discriminator(nn.Module):
 
         Arguments:
         ----------
-        input_data - Input tensor of shape [B, H, W, V, U]
+        input_data - Input tensor of shape [B, H, W, V, U, C]
 
         Returns:
         --------
@@ -91,18 +92,19 @@ class Discriminator(nn.Module):
         B, H, W, V, U, C = x.shape
         assert C == 3
 
-        x = x.permute(0, 1, 4, 2, 3, 5).contiguous()
-        x = x.view(B, H * U, W * V, 3)
+        x = x.permute(0, 5, 1, 4, 2, 3).contiguous()
+        x = x.view(B, 3, H * U, W * V)
+
         x = self.net(x)
 
         residual = x
         out = self.lky1(self.bn1(self.conv1(x)))
         out = self.lky2(self.bn2(self.conv2(out)))
         out = self.lky3(self.bn3(self.conv3(out)))
-        out = self.lky4(self.bn4(self.conv4(out)))
+
         x = out + residual
 
-        x = self.conv5(x)
+        x = self.conv4(x)
 
         x = x.view(B, -1)
 

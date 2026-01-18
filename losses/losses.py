@@ -42,29 +42,28 @@ def gradientPenalty(D, real_data, generated_data, use_cuda=False):
     Returns the Gradient Penalty term
     """
     batch_size = real_data.size()[0]
+    device = real_data.device
 
     # Calculate interpolation
-    alpha = torch.rand(batch_size, 1, 1, 1)
-    alpha = alpha.expand_as(real_data)
-    if use_cuda:
-        alpha = alpha.cuda()
-    interpolated = alpha * real_data.data + (1 - alpha) * generated_data.data
-    interpolated = Variable(interpolated, requires_grad=True)
-    if use_cuda:
-        interpolated = interpolated.cuda()
+    alpha = torch.rand(batch_size, 1, 1, 1, 1, 1, device=device)
+    
+    interpolated = alpha * real_data + (1 - alpha) * generated_data.detach()
+    interpolated.requires_grad_(True)
 
     # Calculate probability of interpolated examples
     prob_interpolated = D(interpolated)
+    prob_interpolated = prob_interpolated.view(batch_size, -1).mean(dim=1)
+
+    grad_outputs = torch.ones_like(prob_interpolated)
 
     # Calculate gradients of probabilities with respect to examples
     gradients = torch_grad(outputs=prob_interpolated, inputs=interpolated,
-                            grad_outputs=torch.ones(prob_interpolated.size()).cuda() if self.use_cuda else torch.ones(
-                            prob_interpolated.size()),
-                            create_graph=True, retain_graph=True)[0]
+                            grad_outputs=grad_outputs,
+                            create_graph=True, only_inputs=True)[0]
 
     # Gradients have shape (batch_size, num_channels, img_width, img_height),
     # so flatten to easily take norm per example in batch
-    gradients = gradients.view(batch_size, -1)
+    gradients = gradients.reshape(batch_size, -1)
 
     # Derivatives of the gradient close to 0 can cause problems because of
     # the square root, so manually calculate norm and add epsilon

@@ -4,7 +4,7 @@
 
 # Import the required packages
 import torch.nn.functional as F
-from VGGloss import VGGFeatureExtractor, normalizeVGG
+from .VGGloss import VGGFeatureExtractor, normalizeVGG
 
 def extractHorizontalEPI(lf):
     """
@@ -48,12 +48,13 @@ def extractVerticalEPI(lf):
     epi_v = epi_v.permute(0,3,2,1)  # [B*W*V, C, U, H]
     return epi_v
 
-def EPILoss(generated_lf, real_lf):
+def EPILoss(vgg, generated_lf, real_lf):
     """
     Function that calculates the EPI loss
 
     Arguments:
     ----------
+    vgg - VGG model
     generated_lf - Generated Light Field
     real_lf - Ground truth Light Field
 
@@ -72,12 +73,10 @@ def EPILoss(generated_lf, real_lf):
     generated_v = normalizeVGG(generated_v)
     real_v = normalizeVGG(real_v)
 
-    vgg = VGGFeatureExtractor()
-
-    generated_h_feats = vgg(generated_h)
-    real_h_feats = vgg(real_h)
-    generated_v_feats = vgg(generated_v)
-    real_v_feats = vgg(real_v)
+    generated_h_feats = vgg(generated_h.cpu())
+    real_h_feats = vgg(real_h.cpu())
+    generated_v_feats = vgg(generated_v.cpu())
+    real_v_feats = vgg(real_v.cpu())
 
     loss_h = 0.0
     loss_v = 0.0

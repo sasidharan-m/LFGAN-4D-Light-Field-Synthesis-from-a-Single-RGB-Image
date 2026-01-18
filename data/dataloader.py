@@ -67,9 +67,9 @@ class LFSubApertureDataset(Dataset):
         """
         folder = self.grid_dirs[idx]
         views = []
-        for v in range(2, self.V-2, 1):
+        for v in range(2, self.V-3, 1):
             row = []
-            for u in range(2, self.U-2, 1):
+            for u in range(2, self.U-3, 1):
                 path = os.path.join(folder, f"view_{v:02d}_{u:02d}.png")
                 img = Image.open(path).convert("RGB")
                 if self.transform:
@@ -89,7 +89,7 @@ class LFSubApertureDataset(Dataset):
 
 
         # center view tensor [3,H,W]
-        u0, v0 = (self.U-4)//2, (self.V-4)//2
+        u0, v0 = (self.U-5)//2, (self.V-5)//2
         center = lf[v0, u0]                        # [3,H,W]
 
         # pick random crop coords

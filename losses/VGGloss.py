@@ -76,20 +76,21 @@ class VGGPerceptualLoss(nn.Module):
     """
     Class that does the VGGPerceptual Loss calculation
     """
-    def __init__(self, layer_weights=None):
+    def __init__(self, vgg_feature_extractor, layer_weights=None):
         """
         Constructor for the class VGGPerceptualLoss
 
         Arguments:
         ---------
-        layer_weights: List containing the weights for different layers
+        vgg_feature_extractor - Object that holds the VGG model
+        layer_weights - List containing the weights for different layers
 
         Returns:
         --------
         Nothing
         """
         super().__init__()
-        self.vgg = VGGFeatureExtractor()
+        self.vgg = vgg_feature_extractor
         self.layer_weights = layer_weights or [1.0, 1.0, 1.0, 1.0]
 
     def forward(self, generated_lf, real_lf):
@@ -106,10 +107,10 @@ class VGGPerceptualLoss(nn.Module):
         Returns the output tensor of shape [B, H, W, V, U, 3]
         fake_lf, real_lf: [B, U*V, 3, H, W]
         """
-        B, H, W, V, U, 3 = generated_lf.shape
+        B, H, W, V, U, C = generated_lf.shape
 
-        generated_lf_flat = generated_lf.permute(0, 3, 4, 1, 2, 5).reshape(B*V*U, 3, H, W)
-        real_lf_flat = real_lf.permute(0, 3, 4, 1, 2, 5).reshape(B*V*U, 3, H, W)
+        generated_lf_flat = generated_lf.permute(0, 3, 4, 1, 2, 5).reshape(B*V*U, C, H, W)
+        real_lf_flat = real_lf.permute(0, 3, 4, 1, 2, 5).reshape(B*V*U, C, H, W)
 
         generated = normalizeVGG(generated_lf_flat)
         real = normalizeVGG(real_lf_flat)
