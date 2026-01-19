@@ -25,7 +25,7 @@ def generatorWGANLoss(d_generated):
     return -d_generated.mean()
 
 
-def gradientPenalty(D, real_data, generated_data, use_cuda=False):
+def gradientPenalty(D, real_data, generated_data):
     """
     Function that defines the Gradient Penalty for the Generator network
     (Based on the WGAN-GP paper)

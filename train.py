@@ -118,11 +118,8 @@ def trainStepLFGAN(G, D, vgg, vgg_loss_fn, real_lf, input_img, g_optimizer, d_op
 
         # WGAN-GP loss
         d_loss = d_fake.mean() - d_real.mean()  # WGAN discriminator loss
-        gp = 0
-        if(device == 'cpu'):
-            gp = gradientPenalty(D, real_lf, fake_lf)
-        else:
-            gp = gradientPenalty(D, real_lf, fake_lf, use_cuda=True)
+        # gp = gradientPenalty(D, real_lf, fake_lf) # Disabling GP as it increases memory required to train
+        gp = torch.tensor([0.0], requires_grad=True, device=device)
         
         d_total_loss = d_loss + lambda_gp * gp
 
@@ -161,7 +158,7 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(
         resize=None,               
         num_workers=4
     )
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
     generator = Generator().to(device)
     discriminator = Discriminator((crop_size[0], crop_size[1], 3)).to(device)
@@ -229,7 +226,7 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(
         for k in epoch_loss:
             epoch_loss[k] /= batch_size
 
-        print(f"Epoch [{epoch}/{epochs}] | "
+        print(f"Epoch [{epoch+1}/{epochs}] | "
               f"G_total={epoch_loss['g_total_loss']:.4f} | "
               f"D_total={epoch_loss['d_total_loss']:.4f} | "
               f"Adv={epoch_loss['adv_loss']:.4f} | "
@@ -275,9 +272,9 @@ def main():
     Nothing
     """
     print("Starting training...")
-    training_data_path = "/home/sasidharan/Projects/Plenoptic Camera/Datasets/Flower Dataset/Sub-Aperture Images/Train"
-    weights_save_path = "/home/sasidharan/Projects/Plenoptic Camera/Code/LFGAN-4D-Light-Field-Synthesis-from-a-Single-RGB-Image/weights"
-    trainLFGAN(training_data_path, weights_save_path, batch_size=1, epochs=10)
+    training_data_path = "../Datasets/Flower Dataset/Sub-Aperture Images/Train"
+    weights_save_path = "./weights"
+    trainLFGAN(training_data_path, weights_save_path, batch_size=1, epochs=10, save_every=5)
     print('Training Done.')
 
 # Run the driver function
