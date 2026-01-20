@@ -15,6 +15,8 @@ from losses.VGGloss import VGGPerceptualLoss, VGGFeatureExtractor
 from losses.EPIloss import EPILoss
 from losses.BRIloss import BRIloss
 
+from logs.log import TeeFile, TeeFileAutoFlush
+
 def generatorLoss(generated_lf, real_lf, D, vgg, vgg_loss_fn, epoch, epochs, device, lambda_adv=1e-3, lambda_mse=1.0, lambda_vgg=2e-6, lambda_epi=2e-6, lambda_bri=1.0):
     """
     Function that calculates the generator loss for LFGAN
@@ -148,17 +150,29 @@ def trainStepLFGAN(G, D, vgg, vgg_loss_fn, real_lf, input_img, g_optimizer, d_op
     })
     return loss_dict
 
-def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(13,13), crop_size=(256,256), batch_size=2, epochs=1000, learning_rate=1e-4, lambda_adv=1e-3, lambda_mse=1.0, lambda_vgg=2e-6, lambda_epi=2e-6, lambda_bri=1.0, lambda_gp=10.0, critic_iters=5, save_every=10):
+def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", log_file='history.log', status_file='run.log', grid=(13,13), crop_size=(256,256), batch_size=2, epochs=1000, learning_rate=1e-4, lambda_adv=1e-3, lambda_mse=1.0, lambda_vgg=2e-6, lambda_epi=2e-6, lambda_bri=1.0, lambda_gp=10.0, critic_iters=5, save_every=10):
     """
     Function that does the complete LFGAN training loop with model weight saving
     """
+
+    if os.path.exists(log_file):
+        os.remove(log_file)
+
+    if os.path.exists(status_file):
+        os.remove(status_file)
+
+    history = TeeFileAutoFlush(log_file)
+    log = TeeFile(status_file)
+
+    history.write("Starting training...")
+
     loader = getDataloader(
         training_data_path, grid, spatial_crop=crop_size,
         batch_size=batch_size,
         resize=None,               
         num_workers=4
     )
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     generator = Generator().to(device)
     discriminator = Discriminator((crop_size[0], crop_size[1], 3)).to(device)
@@ -173,6 +187,7 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(
 
     if checkpoint_path != "" and os.path.exists(checkpoint_path):
         print("Loading model state from checkpoint...")
+        history.write("Loading model state from checkpoint...")
         checkpoint = torch.load(checkpoint_path)
         generator.load_state_dict[checkpoint["generator_state"]]
         g_optimizer.load_state_dict(checkpoint["generator_optim_state"])
@@ -191,7 +206,7 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(
             "gp": 0.0
         }
 
-        loop = tqdm(enumerate(loader), total=len(loader), ncols=80, desc=f"Epoch [{epoch+1}/{epochs}]", leave=True, dynamic_ncols=False)
+        loop = tqdm(enumerate(loader), total=len(loader), ncols=80, desc=f"Epoch [{epoch+1}/{epochs}]", file=log)
 
         for i, (aif_batch, lf_batch) in loop:
             # move to device
@@ -225,16 +240,16 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(
         # Average losses for the epoch
         for k in epoch_loss:
             epoch_loss[k] /= batch_size
-
-        print(f"Epoch [{epoch+1}/{epochs}] | "
-              f"G_total={epoch_loss['g_total_loss']:.4f} | "
-              f"D_total={epoch_loss['d_total_loss']:.4f} | "
-              f"Adv={epoch_loss['adv_loss']:.4f} | "
-              f"MSE={epoch_loss['mse_loss']:.4f} | "
-              f"VGG={epoch_loss['vgg_loss']:.4f} | "
-              f"EPI={epoch_loss['epi_loss']:.4f} | "
-              f"BRI={epoch_loss['bri_loss']:.4f} | "
-              f"GP={epoch_loss['gp']:.4f}")
+        
+        history.write(f"Epoch [{epoch+1}/{epochs}] | "
+                      f"G_total={epoch_loss['g_total_loss']:.4f} | "
+                      f"D_total={epoch_loss['d_total_loss']:.4f} | "
+                      f"Adv={epoch_loss['adv_loss']:.4f} | "
+                      f"MSE={epoch_loss['mse_loss']:.4f} | "
+                      f"VGG={epoch_loss['vgg_loss']:.4f} | "
+                      f"EPI={epoch_loss['epi_loss']:.4f} | "
+                      f"BRI={epoch_loss['bri_loss']:.4f} | "
+                      f"GP={epoch_loss['gp']:.4f}")
 
         # -----------------------------
         # Save model checkpoints
@@ -258,6 +273,8 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", grid=(
     torch.save(generator.state_dict(), g_path)
     torch.save(discriminator.state_dict(), d_path)
 
+    history.write("Training Done.")
+
 
 def main():
     """
@@ -271,11 +288,9 @@ def main():
     --------
     Nothing
     """
-    print("Starting training...")
-    training_data_path = "../Datasets/Flower Dataset/Sub-Aperture Images/Train"
+    training_data_path = "../../Datasets/Flower Dataset/Sub-Aperture Images/Train"
     weights_save_path = "./weights"
     trainLFGAN(training_data_path, weights_save_path, batch_size=1, epochs=10, save_every=5)
-    print('Training Done.')
 
 # Run the driver function
 if __name__ == "__main__":
