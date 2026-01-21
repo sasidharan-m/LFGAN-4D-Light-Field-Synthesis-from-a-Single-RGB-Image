@@ -170,7 +170,7 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", log_fi
         training_data_path, grid, spatial_crop=crop_size,
         batch_size=batch_size,
         resize=None,               
-        num_workers=4
+        num_workers=2
     )
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -189,7 +189,7 @@ def trainLFGAN(training_data_path, weights_save_path, checkpoint_path="", log_fi
         print("Loading model state from checkpoint...")
         history.write("Loading model state from checkpoint...")
         checkpoint = torch.load(checkpoint_path)
-        generator.load_state_dict[checkpoint["generator_state"]]
+        generator.load_state_dict(checkpoint["generator_state"])
         g_optimizer.load_state_dict(checkpoint["generator_optim_state"])
         discriminator.load_state_dict[checkpoint["discriminator_state"]]
         d_optimizer.load_state_dict(checkpoint["discriminator_optim_state"])
@@ -288,9 +288,11 @@ def main():
     --------
     Nothing
     """
-    training_data_path = "../../Datasets/Flower Dataset/Sub-Aperture Images/Train"
+    training_data_path = "/scratch/samahali/Datasets/Flower Dataset/Sub-Aperture Images/Train"
     weights_save_path = "./weights"
-    trainLFGAN(training_data_path, weights_save_path, batch_size=1, epochs=10, save_every=5)
+    log_file='history.log'
+    status_file='run.log'
+    trainLFGAN(training_data_path, weights_save_path, log_file=log_file, status_file=status_file, batch_size=3, epochs=100, save_every=5)
 
 # Run the driver function
 if __name__ == "__main__":
